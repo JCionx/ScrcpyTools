@@ -114,10 +114,29 @@ class MainWindow(QMainWindow):
         button6.setToolTip("Install Android packages on the phone [NEEDS PAIRING]")
         gridLayout.addWidget(button6, 2, 1)
 
+        button7 = QPushButton("Open URL")
+        button7.setIcon(QIcon("icons/url.svg"))
+        button7.setIconSize(QSize(60, 60))
+        button7.pressed.connect(self.open_url)
+        button7.setSizePolicy(sizePolicy)
+        button7.setStyleSheet(buttonStyle)
+        button7.setToolTip("Open URL on the phone [NEEDS PAIRING]")
+        gridLayout.addWidget(button7, 3, 0)
+
+        button8 = QPushButton("Webcam")
+        button8.setIcon(QIcon("icons/webcam.svg"))
+        button8.setIconSize(QSize(60, 60))
+        button8.pressed.connect(self.webcam)
+        button8.setSizePolicy(sizePolicy)
+        button8.setStyleSheet(buttonStyle)
+        button8.setToolTip("Use phone's camera as a webcam [NEEDS PAIRING]")
+        gridLayout.addWidget(button8, 3, 1)
+
         # Set the stretch factor for both rows to ensure buttons scale vertically
         gridLayout.setRowStretch(0, 1)
         gridLayout.setRowStretch(1, 1)
         gridLayout.setRowStretch(2, 1)
+        gridLayout.setRowStretch(3, 1)
 
         # Set the layout of the central widget
         centralWidget.setLayout(gridLayout)
@@ -144,15 +163,12 @@ class MainWindow(QMainWindow):
 
 
     def mirror_screen(self):
-        print("Mirror Screen")
         os.system("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='Screen Mirror' --mouse-bind=++++")
 
     def otg_control(self):
-        print("OTG Control")
         os.system("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='OTG Control' --otg")
     
     def sound(self):
-        print("Sound")
         os.system("SCRCPY_ICON_PATH=\"icons/logo_large.png\" scrcpy --window-title='Sound' --no-video --no-control")
     
     def send(self):
@@ -264,6 +280,15 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Wireless Device Pairing", f"Wireless Device paired successfully")
         else:
             QMessageBox.warning(self, "Wireless Device Pairing", "Port not provided")
+    
+    def open_url(self):
+        url, ok = QInputDialog.getText(self, "Open URL", "Enter URL to open:")
+        if ok and url:
+            # open url with adb
+            os.system(f"adb shell am start -a android.intent.action.VIEW -d {url}")
+
+    def webcam(self):
+        os.system("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='Webcam' --video-source=camera --no-audio --camera-size=1920x1080")
         
 app = QApplication(sys.argv)
 window = MainWindow()
