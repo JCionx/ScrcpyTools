@@ -5,6 +5,8 @@ from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtCore import QSize
 import subprocess
 
+version = "1.0.1"
+
 # MainWindow Class
 class MainWindow(QMainWindow):  
     def __init__(self):
@@ -148,7 +150,9 @@ class MainWindow(QMainWindow):
         if ok and text:
             # Replace spaces with '%s' for ADB command compatibility
             text = text.replace(' ', '%s')
-            subprocess.run(f"adb shell input text {text}", shell=True)
+            text = text.replace('&', '\\&')
+            text = text.replace('*', '\\*')
+            subprocess.run(f"adb shell input text \"{text}\"", shell=True)
 
     def transfer_file(self):
         files, _ = QFileDialog.getOpenFileNames(self, "Select Files", "", "All Files (*)")
@@ -209,7 +213,7 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "ADB Server", "ADB Server restarted sucessfully")
 
     def showAbout(self):
-        QMessageBox.about(self, "About", "Scrcpy Tools\n\nVersion: 1.0\nAuthor: JCionx\n\nA simple GUI for scrcpy tools.")
+        QMessageBox.about(self, "About", f"Scrcpy Tools\n\nVersion: {version}\nAuthor: JCionx\n\nA simple GUI for scrcpy.")
 
     def pairWireless(self):
         ip, ok = QInputDialog.getText(self, "Pair Wireless Device", "Enter the Pairing IP and Port:")
@@ -232,7 +236,9 @@ class MainWindow(QMainWindow):
         url, ok = QInputDialog.getText(self, "Open URL", "Enter URL to open:")
         if ok and url:
             # open url with adb
-            subprocess.run(f"adb shell am start -a android.intent.action.VIEW -d {url}", shell=True)
+            url = url.replace('&', '\\&')
+            url = url.replace('*', '\\*')
+            subprocess.run(f"adb shell am start -a android.intent.action.VIEW -d \"{url}\"", shell=True)
 
     def webcam(self):
         subprocess.run("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='Webcam' --video-source=camera --no-audio --camera-size=1920x1080", shell=True)
