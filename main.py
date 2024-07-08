@@ -45,6 +45,8 @@ class MainWindow(QMainWindow):
 
         self.setWindowIcon(QIcon("icons/logo_small.png"))
 
+        self.setMinimumSize(600, 400)
+
         # Create a central widget and a grid layout
         centralWidget = QWidget()
         gridLayout = QGridLayout()
