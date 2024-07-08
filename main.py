@@ -4,36 +4,6 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QGridLayout,
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtCore import QSize
 import subprocess
-from zeroconf import ServiceBrowser, Zeroconf
-import qrcode
-import time
-
-# QR Code Generator variables
-TYPE = "_adb-tls-pairing._tcp.local."
-NAME = "debug"
-PASS = "123456"
-FORMAT_QR = "WIFI:T:ADB;S:%s;P:%s;;"
-CMD_PAIR = "adb pair %s:%s %s"
-PAIRING = False
-
-# QR Code Generator Class
-class QRListener:
-    def remove_service(self, zeroconf, type, name):
-        global PAIRING
-        print("Service %s removed." % name)
-        print("Press enter to exit...\n")
-        PAIRING = False
-
-    def add_service(self, zeroconf, type, name):
-        info = zeroconf.get_service_info(type, name)
-        print("Service %s added." % name)
-        print("service info: %s\n" % info)
-        self.pair(info)
-
-    def pair(self, info):
-        cmd = CMD_PAIR % (info.server, info.port, PASS)
-        print(cmd)
-        subprocess.run(cmd, shell=True)
 
 # MainWindow Class
 class MainWindow(QMainWindow):  
@@ -165,20 +135,20 @@ class MainWindow(QMainWindow):
 
 
     def mirror_screen(self):
-        os.system("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='Screen Mirror' --mouse-bind=++++")
+        subprocess.run("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='Screen Mirror' --mouse-bind=++++", shell=True)
 
     def otg_control(self):
-        os.system("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='OTG Control' --otg")
+        subprocess.run("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='OTG Control' --otg", shell=True)
     
     def sound(self):
-        os.system("SCRCPY_ICON_PATH=\"icons/logo_large.png\" scrcpy --window-title='Sound' --no-video --no-control")
+        subprocess.run("SCRCPY_ICON_PATH=\"icons/logo_large.png\" scrcpy --window-title='Sound' --no-video --no-control --audio-buffer=200", shell=True)
     
     def send(self):
         text, ok = QInputDialog.getText(self, "Send Text", "Enter text to send:")
         if ok and text:
             # Replace spaces with '%s' for ADB command compatibility
             text = text.replace(' ', '%s')
-            os.system(f"adb shell input text {text}")
+            subprocess.run(f"adb shell input text {text}", shell=True)
 
     def transfer_file(self):
         files, _ = QFileDialog.getOpenFileNames(self, "Select Files", "", "All Files (*)")
@@ -186,7 +156,7 @@ class MainWindow(QMainWindow):
         if files:
             for file_path in files:
                 adb_command = f"adb push '{file_path}' /sdcard/Download/"
-                os.system(adb_command)
+                subprocess.run(adb_command, shell=True)
             
             if len(files) == 1:
                 file_name = files[0].split('/')[-1]  # Extract the file name
@@ -207,7 +177,7 @@ class MainWindow(QMainWindow):
                 elif extension == "zip":
                     mime_type = "application/zip"
                 
-                os.system(f"adb shell am start -a android.intent.action.VIEW -d file:///sdcard/Download/{file_name} -t {mime_type}")
+                subprocess.run(f"adb shell am start -a android.intent.action.VIEW -d file:///sdcard/Download/{file_name} -t {mime_type}", shell=True)
             
             print(f"Transferred {len(files)} files to the phone's download folder.")
             QMessageBox.information(self, "File Transfer Successful", f"Transferred {len(files)} {'files' if len(files) > 1 else 'file'} to: /sdcard/Download/")
@@ -225,7 +195,7 @@ class MainWindow(QMainWindow):
                 # Construct the adb command to install each APK
                 adb_command = f"adb install '{file_path}'"
                 # Execute the adb command
-                result = os.system(adb_command)
+                result = subprocess.run(adb_command, shell=True).returncode
                 if result == 0:
                     QMessageBox.information(self, "Installation Successful", f"App installed: {file_path.split('/')[-1]}")
                 else:
@@ -234,63 +204,38 @@ class MainWindow(QMainWindow):
             print("No APK files selected.")
 
     def restartAdb(self):
-        os.system("adb kill-server")
-        os.system("adb start-server")
+        subprocess.run("adb kill-server", shell=True)
+        subprocess.run("adb start-server", shell=True)
         QMessageBox.information(self, "ADB Server", "ADB Server restarted sucessfully")
 
     def showAbout(self):
         QMessageBox.about(self, "About", "Scrcpy Tools\n\nVersion: 1.0\nAuthor: JCionx\n\nA simple GUI for scrcpy tools.")
 
     def pairWireless(self):
-        global PAIRING
-        PAIRING = True
-        text = FORMAT_QR % (NAME, PASS)
-        # Generate QR code
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(text)
-        qr.make(fit=True)
-
-        img = qr.make_image(fill_color="black", back_color="white")
-        img.save("pair_qr.png")  # Display the QR code image
-
-        zeroconf = Zeroconf()
-        listener = QRListener()
-        browser = ServiceBrowser(zeroconf, TYPE, listener)
-    
-        try:
-            dialog = QDialog()
-            lay = QVBoxLayout(dialog)
-            label = QLabel()
-            lay.addWidget(label)
-            pixmap = QPixmap("pair_qr.png")
-            label.setPixmap(pixmap)
-            dialog.exec()
-            while PAIRING:
-                time.sleep(0.1)
-                print(PAIRING)
-        finally:
-            zeroconf.close()
-
-        ip, ok = QInputDialog.getText(self, "Pair Wireless Device", "Enter the Wireless Debugging IP and Port:")
+        ip, ok = QInputDialog.getText(self, "Pair Wireless Device", "Enter the Pairing IP and Port:")
         if ok and ip:
-            os.system(f"adb connect {ip}")
-            QMessageBox.information(self, "Wireless Device Pairing", f"Wireless Device paired successfully")
+            code, ok = QInputDialog.getText(self, "Pair Wireless Device", "Enter the Pairing Code:")
+            if ok and ip:
+                subprocess.run(f"adb pair {ip} {code}", shell=True)
+                port, ok = QInputDialog.getText(self, "Pair Wireless Device", "Enter the Wireless Debugging Port:")
+                if ok and ip:
+                    subprocess.run(f"adb connect {ip.strip()}:{port.strip()}", shell=True)
+                    QMessageBox.information(self, "Wireless Device Pairing", f"Wireless Device paired successfully")
+                else:
+                    QMessageBox.warning(self, "Wireless Device Pairing", "Port not provided")
+            else:
+                QMessageBox.warning(self, "Wireless Device Pairing", "Code not provided")
         else:
-            QMessageBox.warning(self, "Wireless Device Pairing", "Port not provided")
+            QMessageBox.warning(self, "Wireless Device Pairing", "IP not provided")
     
     def open_url(self):
         url, ok = QInputDialog.getText(self, "Open URL", "Enter URL to open:")
         if ok and url:
             # open url with adb
-            os.system(f"adb shell am start -a android.intent.action.VIEW -d {url}")
+            subprocess.run(f"adb shell am start -a android.intent.action.VIEW -d {url}", shell=True)
 
     def webcam(self):
-        os.system("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='Webcam' --video-source=camera --no-audio --camera-size=1920x1080")
+        subprocess.run("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='Webcam' --video-source=camera --no-audio --camera-size=1920x1080", shell=True)
         
 app = QApplication(sys.argv)
 window = MainWindow()
