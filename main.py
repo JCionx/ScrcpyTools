@@ -43,6 +43,8 @@ class MainWindow(QMainWindow):
         # Window Title
         self.setWindowTitle("Scrcpy Tools")
 
+        self.setWindowIcon(QIcon("icons/logo_small.png"))
+
         # Create a central widget and a grid layout
         centralWidget = QWidget()
         gridLayout = QGridLayout()
@@ -122,7 +124,7 @@ class MainWindow(QMainWindow):
 
         # Set the central widget of the Window
         self.setCentralWidget(centralWidget)
-        
+
         # Create the menu bar
         menuBar = self.menuBar()
 
@@ -143,15 +145,15 @@ class MainWindow(QMainWindow):
 
     def mirror_screen(self):
         print("Mirror Screen")
-        os.system("scrcpy --window-title='Screen Mirror' --mouse-bind=++++")
+        os.system("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='Screen Mirror' --mouse-bind=++++")
 
     def otg_control(self):
         print("OTG Control")
-        os.system("scrcpy --window-title='OTG Control' --otg")
+        os.system("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='OTG Control' --otg")
     
     def sound(self):
         print("Sound")
-        os.system("scrcpy --window-title='Sound' --no-video --no-control")
+        os.system("SCRCPY_ICON_PATH=\"icons/logo_large.png\" scrcpy --window-title='Sound' --no-video --no-control")
     
     def send(self):
         text, ok = QInputDialog.getText(self, "Send Text", "Enter text to send:")
