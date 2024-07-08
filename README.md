@@ -7,7 +7,7 @@
 ### Linux
 Tested on Debian
 ### macOS
-Will test
+Tested on macOS Sequoia
 ### Windows
 Probably won't work
 
@@ -21,6 +21,21 @@ sudo apt install adb
 git clone https://github.com/Genymobile/scrcpy
 cd scrcpy
 ./install_release.sh
+
+# Run Scrcpy Tools
+git clone https://github.com/JCionx/scrcpy-tools
+cd scrcpy-tools
+pip install -r requirements.txt
+python3 main.py
+```
+
+### macOS
+```
+# Install ADB
+brew install adb
+
+# Install scrcpy
+brew install scrcpy
 
 # Run Scrcpy Tools
 git clone https://github.com/JCionx/scrcpy-tools
