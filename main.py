@@ -1,14 +1,75 @@
 import sys
-import os
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QGridLayout, QWidget, QSizePolicy, QInputDialog, QFileDialog, QMessageBox, QDialog, QVBoxLayout, QLabel
-from PyQt6.QtGui import QIcon, QPixmap
-from PyQt6.QtCore import QSize
+from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QGridLayout, QWidget, QSizePolicy, QInputDialog, QFileDialog, QMessageBox, QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QRadioButton, QGroupBox, QCheckBox, QLineEdit
+from PyQt6.QtGui import QIcon, QIntValidator
+from PyQt6.QtCore import QSize, QSettings
 import subprocess
 
 version = "1.0.1"
+organization = "jcionx"
+product_name = "scrcpy_tools"
+
+class SettingsDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Settings")
+
+        title_style = """
+        QLabel {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        """
+
+        # Layout
+        layout = QVBoxLayout()
+
+        # Mirror Screen Settings
+        self.mirror_screen_title = QLabel("Mirror Screen")
+        self.mirror_screen_title.setStyleSheet(title_style)
+        self.otg_mirror_checkbox = QCheckBox("Enable OTG Control while mirroring screen (does not work on Windows)")
+        
+        layout.addWidget(self.mirror_screen_title)
+        layout.addWidget(self.otg_mirror_checkbox)
+
+        # Audio Mode Settings
+        self.audio_mode_title = QLabel("Audio Mode")
+        self.audio_mode_title.setStyleSheet(title_style)
+        self.audio_mode_buffer_label = QLabel("Audio Buffer (ms):")
+        self.audio_mode_buffer = QLineEdit()
+        # make it only accept int numbers
+        self.audio_mode_buffer.setValidator(QIntValidator())
+        layout.addWidget(self.audio_mode_title)
+        layout.addWidget(self.audio_mode_buffer_label)
+        layout.addWidget(self.audio_mode_buffer)
+
+        # Save button
+        self.saveButton = QPushButton("Save")
+        layout.addWidget(self.saveButton)
+        
+        # Set dialog layout
+        self.setLayout(layout)
+        
+        # Connect signals to slots
+        self.saveButton.clicked.connect(self.save_settings)
+
+        # Load settings at initialization
+        self.load_settings()    
+
+    def save_settings(self):
+        settings = QSettings(organization, product_name)
+        settings.setValue('otg_mirror_enabled', self.otg_mirror_checkbox.isChecked())
+        settings.setValue('audio_buffer', self.audio_mode_buffer.text())
+        self.accept()
+
+    def load_settings(self):
+        settings = QSettings(organization, product_name)
+        otg_mirror_enabled = settings.value('otg_mirror_enabled', defaultValue=False, type=bool)
+        audio_buffer = settings.value('audio_buffer', defaultValue="200", type=str)
+        self.otg_mirror_checkbox.setChecked(otg_mirror_enabled)
+        self.audio_mode_buffer.setText(audio_buffer)
 
 # MainWindow Class
-class MainWindow(QMainWindow):  
+class MainWindow(QMainWindow):      
     def __init__(self):
         super().__init__()
 
@@ -18,6 +79,8 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon("icons/logo_small.png"))
 
         self.setMinimumSize(600, 400)
+
+        settings = QSettings(organization, product_name)
 
         # Create a central widget and a grid layout
         centralWidget = QWidget()
@@ -52,7 +115,7 @@ class MainWindow(QMainWindow):
         button2.setToolTip("Send mouse and keyboard input directly to the phone [NEEDS USB CONNECTION]")
         gridLayout.addWidget(button2, 0, 1)
 
-        button3 = QPushButton("Sound")
+        button3 = QPushButton("Audio Mode")
         button3.setIcon(QIcon("icons/sound.svg"))
         button3.setIconSize(QSize(60, 60))
         button3.pressed.connect(self.sound)
@@ -61,7 +124,7 @@ class MainWindow(QMainWindow):
         button3.setToolTip("Play the phone's audio on this device [NEEDS PAIRING]")
         gridLayout.addWidget(button3, 1, 0)
 
-        button4 = QPushButton("Send")
+        button4 = QPushButton("Send text")
         button4.setIcon(QIcon("icons/send.svg"))
         button4.setIconSize(QSize(60, 60))
         button4.pressed.connect(self.send)
@@ -125,9 +188,10 @@ class MainWindow(QMainWindow):
         fileMenu = menuBar.addMenu("File")
 
         # Add actions to the "File" menu
-        fileMenu.addAction("Pair wireless device", self.pairWireless)  # Placeholder for an openFile method
-        fileMenu.addAction("Restart ADB Server", self.restartAdb)  # Placeholder for an openFile method
-        fileMenu.addAction("Exit", self.close)  # Use the built-in close method to exit
+        fileMenu.addAction("Pair wireless device", self.pairWireless)
+        fileMenu.addAction("Restart ADB Server", self.restartAdb)
+        fileMenu.addAction("Settings", self.open_settings_dialog)
+        fileMenu.addAction("Exit", self.close)
 
         # Create the "Help" menu
         helpMenu = menuBar.addMenu("Help")
@@ -135,15 +199,29 @@ class MainWindow(QMainWindow):
         # Add actions to the "Help" menu
         helpMenu.addAction("About", self.showAbout)  # Placeholder for a showAbout method
 
+    def open_settings_dialog(self):
+        dialog = SettingsDialog()
+        dialog.exec()
 
     def mirror_screen(self):
-        subprocess.run("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='Screen Mirror' --mouse-bind=++++", shell=True)
+        # Load settings
+        settings = QSettings(organization, product_name)
+        otg_mirror_enabled = settings.value('otg_mirror_enabled', defaultValue=False, type=bool)
+
+        if otg_mirror_enabled:
+            print("-M -K")
+            subprocess.run("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='Screen Mirror' --mouse-bind=++++ -M -K", shell=True)
+        else:
+            subprocess.run("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='Screen Mirror' --mouse-bind=++++", shell=True)
 
     def otg_control(self):
         subprocess.run("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='OTG Control' --otg", shell=True)
     
     def sound(self):
-        subprocess.run("SCRCPY_ICON_PATH=\"icons/logo_large.png\" scrcpy --window-title='Sound' --no-video --no-control --audio-buffer=200", shell=True)
+        settings = QSettings(organization, product_name)
+        audio_buffer = settings.value('audio_buffer', defaultValue="200", type=str)
+        print(audio_buffer)
+        subprocess.run(f"SCRCPY_ICON_PATH=\"icons/logo_large.png\" scrcpy --window-title='Sound' --no-video --no-control --audio-buffer={audio_buffer}", shell=True)
     
     def send(self):
         text, ok = QInputDialog.getText(self, "Send Text", "Enter text to send:")
@@ -223,7 +301,8 @@ class MainWindow(QMainWindow):
                 subprocess.run(f"adb pair {ip} {code}", shell=True)
                 port, ok = QInputDialog.getText(self, "Pair Wireless Device", "Enter the Wireless Debugging Port:")
                 if ok and ip:
-                    subprocess.run(f"adb connect {ip.strip()}:{port.strip()}", shell=True)
+                    print(f"adb connect {ip.split(":")[0]}:{port}")
+                    subprocess.run(f"adb connect {ip.split(":")[0]}:{port}", shell=True)
                     QMessageBox.information(self, "Wireless Device Pairing", f"Wireless Device paired successfully")
                 else:
                     QMessageBox.warning(self, "Wireless Device Pairing", "Port not provided")
@@ -242,7 +321,7 @@ class MainWindow(QMainWindow):
 
     def webcam(self):
         subprocess.run("SCRCPY_ICON_PATH=\"icons/logo.svg\" scrcpy --window-title='Webcam' --video-source=camera --no-audio --camera-size=1920x1080", shell=True)
-        
+
 app = QApplication(sys.argv)
 window = MainWindow()
 window.show()
